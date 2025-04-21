@@ -464,42 +464,189 @@ string DES_CBC_decrypt(const string& ciphertext, const string& key, const string
     return removePadding(plaintext);
 }
 
+
+
+// RSA related functions
+
+
+
+// Function to find the greatest common divisor (GCD)
+long long gcd(long long a, long long b) {
+    while (b) {
+        a %= b;
+        swap(a, b);
+    }
+    return a;
+}
+
+// Function to perform modular exponentiation (base^exp mod mod)
+long long power(long long base, long long exp, long long mod) {
+    long long res = 1;
+    base %= mod;
+    while (exp > 0) {
+        if (exp % 2 == 1) res = (res * base) % mod;
+        base = (base * base) % mod;
+        exp /= 2;
+    }
+    return res;
+}
+
+// Function to find the modular multiplicative inverse of 'a' modulo 'm'
+long long modInverse(long long a, long long m) {
+    long long m0 = m, y = 0, x = 1;
+    if (m == 1) return 0;
+    while (a > 1) {
+        long long q = a / m;
+        long long t = m;
+        m = a % m, a = t;
+        t = y;
+        y = x - q * y;
+        x = t;
+    }
+    if (x < 0) x += m0;
+    return x;
+}
+
+// Function to generate large prime numbers (for simplicity, we'll use a basic primality test)
+bool isPrime(long long n) {
+    if (n <= 1) return false;
+    if (n <= 3) return true;
+    if (n % 2 == 0 || n % 3 == 0) return false;
+    for (long long i = 5; i * i <= n; i = i + 6)
+        if (n % i == 0 || n % (i + 2) == 0)
+            return false;
+    return true;
+}
+
+// Function to generate a random prime number within a specified range
+long long generatePrime(long long min, long long max) {
+    while (true) {
+        long long num = min + (rand() % (max - min + 1));
+        if (isPrime(num)) return num;
+    }
+}
+
+// Function to generate RSA key pair
+pair<pair<long long, long long>, pair<long long, long long>> generateRSAKeys() {
+    // Choose two large prime numbers p and q
+    long long p = generatePrime(100, 500); // For demonstration, using smaller primes
+    long long q = generatePrime(501, 1000);
+    while (p == q) {
+        q = generatePrime(501, 1000);
+    }
+
+    // Calculate n = p * q
+    long long n = p * q;
+
+    // Calculate phi(n) = (p - 1) * (q - 1)
+    long long phi_n = (p - 1) * (q - 1);
+
+    // Choose an integer e such that 1 < e < phi(n) and gcd(e, phi(n)) = 1
+    long long e = rand() % (phi_n - 2) + 2;
+    while (gcd(e, phi_n) != 1) {
+        e = rand() % (phi_n - 2) + 2;
+    }
+
+    // Calculate d as the modular multiplicative inverse of e modulo phi(n)
+    long long d = modInverse(e, phi_n);
+
+    // Public key is (e, n), private key is (d, n)
+    return {{e, n}, {d, n}};
+}
+
+// Function to encrypt a message using RSA public key
+vector<long long> RSAEncrypt(const string& message, long long e, long long n) {
+    vector<long long> ciphertext;
+    for (char c : message) {
+        ciphertext.push_back(power(static_cast<long long>(c), e, n));
+    }
+    return ciphertext;
+}
+
+// Function to decrypt a ciphertext using RSA private key
+string RSADecrypt(const vector<long long>& ciphertext, long long d, long long n) {
+    string plaintext = "";
+    for (long long val : ciphertext) {
+        plaintext += static_cast<char>(power(val, d, n));
+    }
+    return plaintext;
+}
+
 int main() {
-    // Generate a random 64-bit key with proper parity
-    
     // Initial Details
-    cout<<"Name : Manas"<<endl<<"Regd No. : 12400217"<<endl<<"Project Name : CryptSecure"<<endl<<"Project Description : Take the input from user for the plain text. Encrypt the data using DES in CBC mode"<<endl 
-	<<"Deliverables:"<<endl 
-	<<"* Implement the encryption/decryption process."<<endl
-	<<"* Key generation."<<endl<<endl;
-    
-    string key = generateRandomKey();
-    cout << "Generated Key (Binary): " << key << endl;
-    cout << "Generated Key (Hex): " << binaryToHex(key) << endl;
-    
-    // Generate initialization vector
+    cout << "Name : Manas" << endl << "Regd No. : 12400217" << endl << "Project Name : CryptSecure" << endl
+         << "Project Description : Take the input from user for the plain text. Encrypt the data using DES in CBC mode with RSA secure key exchange." << endl
+         << "Deliverables(pre-MTE):" << endl
+         << "* Implement the encryption/decryption process (DES CBC)." << endl
+         << "* Key generation (DES & RSA)." << endl
+         << "* Implement secure key exchange and communication between users (RSA)." << endl << endl;
+         
+
+    // 1. Generate a symmetric key (for DES)
+    string desKey = generateRandomKey();
+    cout << "Generated DES Key (Binary): " << desKey << endl;
+    cout << "Generated DES Key (Hex): " << binaryToHex(desKey) << endl;
+
+    // Generate initialization vector for DES
     string iv = generateIV();
     cout << "Generated IV (Binary): " << iv << endl;
     cout << "Generated IV (Hex): " << binaryToHex(iv) << endl;
-    
-    // Get plaintext input
+
+    // 2. Get plaintext input
     cout << "Enter plaintext: ";
     string inputText;
     getline(cin, inputText);
-    
-    // Convert text to binary
+
+    // Convert text to binary for DES encryption
     string binaryText = textToBinary(inputText);
     cout << "Binary plaintext: " << binaryText << endl;
-    
-    // Encrypt in CBC mode
-    string ciphertext = DES_CBC_encrypt(binaryText, key, iv);
-    cout << "Ciphertext (Binary): " << ciphertext << endl;
-    cout << "Ciphertext (Hex): " << binaryToHex(ciphertext) << endl;
-    
-    // Decrypt in CBC mode
-    string decryptedText = DES_CBC_decrypt(ciphertext, key, iv);
-    cout << "Decrypted text (Binary): " << decryptedText << endl;
-    cout << "Decrypted text: " << binaryToText(decryptedText) << endl;
-    
+
+    // 3. Encrypt the actual message using DES
+    string encryptedMessage = DES_CBC_encrypt(binaryText, desKey, iv);
+    cout << "DES Ciphertext (Binary): " << encryptedMessage << endl;
+    cout << "DES Ciphertext (Hex): " << binaryToHex(encryptedMessage) << endl;
+
+    // 4. Generate RSA key pairs for sender and receiver
+    cout << "\n--- RSA Key Generation ---" << endl;
+    pair<pair<long long, long long>, pair<long long, long long>> senderKeys = generateRSAKeys();
+    long long senderPublicKey_e = senderKeys.first.first;
+    long long senderPublicKey_n = senderKeys.first.second;
+    long long senderPrivateKey_d = senderKeys.second.first;
+
+    pair<pair<long long, long long>, pair<long long, long long>> receiverKeys = generateRSAKeys();
+    long long receiverPublicKey_e = receiverKeys.first.first;
+    long long receiverPublicKey_n = receiverKeys.first.second;
+    long long receiverPrivateKey_d = receiverKeys.second.first;
+
+    cout << "Sender Public Key (e, n): (" << senderPublicKey_e << ", " << senderPublicKey_n << ")" << endl;
+    cout << "Sender Private Key (d, n): (" << senderPrivateKey_d << ", " << senderPublicKey_n << ")" << endl;
+    cout << "Receiver Public Key (e, n): (" << receiverPublicKey_e << ", " << receiverPublicKey_n << ")" << endl;
+    cout << "Receiver Private Key (d, n): (" << receiverPrivateKey_d << ", " << receiverPublicKey_n << ")" << endl;
+
+    // 5. Encrypt the DES key using the receiver's RSA public key
+    cout << "\n--- Secure Key Exchange ---" << endl;
+    vector<long long> encryptedDESKey = RSAEncrypt(desKey, receiverPublicKey_e, receiverPublicKey_n);
+    cout << "Encrypted DES Key (RSA Ciphertext - Numbers): ";
+    for (long long val : encryptedDESKey) {
+        cout << val << " ";
+    }
+    cout << endl;
+
+    // Simulate sending the encrypted DES key and the encrypted message
+
+    // --- Receiver Side ---
+    cout << "\n--- Receiver Side ---" << endl;
+
+    // 6. Receiver uses RSA private key to decrypt the DES key
+    string decryptedDESKey = RSADecrypt(encryptedDESKey, receiverPrivateKey_d, receiverPublicKey_n);
+    cout << "Decrypted DES Key (Binary): " << decryptedDESKey << endl;
+    cout << "Decrypted DES Key (Hex): " << binaryToHex(decryptedDESKey) << endl;
+
+    // 7. Receiver uses the DES key to decrypt the message
+    string decryptedBinaryText = DES_CBC_decrypt(encryptedMessage, decryptedDESKey, iv);
+    cout << "Decrypted text (Binary): " << decryptedBinaryText << endl;
+    cout << "Decrypted text: " << binaryToText(decryptedBinaryText) << endl;
+
     return 0;
 }
+
